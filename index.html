@@ -3,56 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D Marketplace</title>
+<title>Marketplace Demo</title>
 <style>
-body{font-family:Arial;background:#1e1e2f;color:white;text-align:center;margin:0}
-header{padding:20px;background:#141423}
-input,button{padding:10px;margin:5px;border-radius:8px;border:none}
-button{background:#ff7b00;color:white;cursor:pointer}
-.product{background:#2b2b45;margin:15px;padding:15px;border-radius:15px}
+body{margin:0;font-family:Arial;background:#121826;color:white;text-align:center}
+header{padding:15px;background:#1f2937}
+input,textarea,button{padding:8px;margin:5px;border-radius:8px;border:none}
+button{background:#f97316;color:white;cursor:pointer}
+.product,.profile{
+background:#1e293b;
+margin:15px auto;
+padding:15px;
+border-radius:15px;
+width:320px
+}
+img{max-width:100%;border-radius:10px;margin:5px 0}
+#cart{background:#0f172a;padding:10px;margin:10px}
 </style>
 </head>
 <body>
 
 <header>
-<h1>3D Print Marketplace</h1>
-<div id="auth"></div>
+<h2>Marketplace Demo</h2>
+<input id="search" placeholder="Пошук..." oninput="loadProducts()">
 </header>
 
+<div id="auth"></div>
 <div id="app" style="display:none;">
-<h2>Додати товар</h2>
-<input id="productName" placeholder="Назва товару">
-<input id="productPrice" placeholder="Ціна">
+
+<h3>Профіль</h3>
+<input type="file" id="profilePic">
+<br>
+<textarea id="profileDesc" placeholder="Опис профілю"></textarea>
+<br>
+<button onclick="saveProfile()">Зберегти профіль</button>
+
+<div id="profile"></div>
+
+<hr>
+
+<h3>Додати товар</h3>
+<input id="name" placeholder="Назва">
+<textarea id="desc" placeholder="Опис товару"></textarea>
+<input id="price" type="number" placeholder="Ціна USD">
+<input type="file" id="images" multiple>
+<br>
 <button onclick="addProduct()">Додати</button>
 
-<h2>Товари</h2>
+<h3>Товари</h3>
 <div id="products"></div>
+
+<hr>
+
+<h3>🛒 Кошик</h3>
+<div id="cart"></div>
+<button onclick="checkout()">Оплатити через PayPal</button>
+
 </div>
 
 <script>
-let currentUser = localStorage.getItem("user");
+let currentUser=localStorage.getItem("user");
+let cart=[];
 
 function showAuth(){
 if(!currentUser){
-document.getElementById("auth").innerHTML=`
-<input id="username" placeholder="Username">
-<button onclick="register()">Login / Register</button>
+auth.innerHTML=`
+<input id="u" placeholder="Username">
+<input id="p" type="password" placeholder="Password">
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
 `;
 }else{
-document.getElementById("auth").innerHTML=`
-Ви увійшли як <b>${currentUser}</b>
-<button onclick="logout()">Вийти</button>
-`;
-document.getElementById("app").style.display="block";
+auth.innerHTML=`Логін: <b>${currentUser}</b>
+<button onclick="logout()">Вийти</button>`;
+app.style.display="block";
+loadProfile();
 loadProducts();
 }
 }
 
 function register(){
-let username=document.getElementById("username").value;
-localStorage.setItem("user",username);
-currentUser=username;
-showAuth();
+let users=JSON.parse(localStorage.getItem("users")||"{}");
+if(users[u.value]) return alert("Існує");
+users[u.value]=p.value;
+localStorage.setItem("users",JSON.stringify(users));
+alert("Готово");
+}
+
+function login(){
+let users=JSON.parse(localStorage.getItem("users")||"{}");
+if(users[u.value]===p.value){
+localStorage.setItem("user",u.value);
+location.reload();
+}else alert("Помилка");
 }
 
 function logout(){
@@ -60,26 +102,93 @@ localStorage.removeItem("user");
 location.reload();
 }
 
+function saveProfile(){
+let reader=new FileReader();
+reader.onload=function(){
+localStorage.setItem("profile_"+currentUser,JSON.stringify({
+pic:reader.result,
+desc:profileDesc.value
+}));
+loadProfile();
+};
+if(profilePic.files[0]) reader.readAsDataURL(profilePic.files[0]);
+}
+
+function loadProfile(){
+let data=JSON.parse(localStorage.getItem("profile_"+currentUser)||"null");
+if(!data) return;
+profile.innerHTML=`
+<div class="profile">
+<img src="${data.pic}">
+<p>${data.desc}</p>
+</div>`;
+}
+
 function addProduct(){
-let name=document.getElementById("productName").value;
-let price=document.getElementById("productPrice").value;
+let readers=[];
+let files=images.files;
+for(let i=0;i<files.length;i++){
+readers.push(new Promise(resolve=>{
+let r=new FileReader();
+r.onload=()=>resolve(r.result);
+r.readAsDataURL(files[i]);
+}));
+}
+Promise.all(readers).then(imgs=>{
 let products=JSON.parse(localStorage.getItem("products")||"[]");
-products.push({user:currentUser,name,price});
+products.push({
+id:Date.now(),
+user:currentUser,
+name:name.value,
+desc:desc.value,
+price:price.value,
+images:imgs
+});
 localStorage.setItem("products",JSON.stringify(products));
 loadProducts();
+});
+}
+
+function addToCart(id){
+cart.push(id);
+updateCart();
+}
+
+function updateCart(){
+cartDiv="";
+let products=JSON.parse(localStorage.getItem("products")||"[]");
+let total=0;
+cart.forEach(id=>{
+let p=products.find(x=>x.id==id);
+if(p){
+total+=parseFloat(p.price);
+cartDiv+=p.name+" - $"+p.price+"<br>";
+}
+});
+cartDiv+="<hr>Total: $"+total;
+cart.innerHTML=cartDiv;
 }
 
 function loadProducts(){
 let products=JSON.parse(localStorage.getItem("products")||"[]");
+let s=search.value.toLowerCase();
 let html="";
-products.forEach(p=>{
-html+=`<div class="product">
-<b>${p.name}</b><br>
-${p.price} USD<br>
-Продавець: ${p.user}
-</div>`;
+products.filter(p=>p.name.toLowerCase().includes(s)).forEach(p=>{
+html+=`
+<div class="product">
+<h4>${p.name}</h4>
+<p>${p.desc}</p>
+<p>$${p.price}</p>
+${p.images.map(img=>`<img src="${img}">`).join("")}
+<button onclick="addToCart(${p.id})">В кошик</button>
+</div>
+`;
 });
-document.getElementById("products").innerHTML=html;
+productsDiv.innerHTML=html;
+}
+
+function checkout(){
+alert("Тут буде інтеграція PayPal API");
 }
 
 showAuth();
