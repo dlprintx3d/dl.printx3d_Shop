@@ -3,80 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Marketplace Demo</title>
+<title>Pro Marketplace</title>
 <style>
-body{margin:0;font-family:Arial;background:#121826;color:white;text-align:center}
-header{padding:15px;background:#1f2937}
-input,textarea,button{padding:8px;margin:5px;border-radius:8px;border:none}
-button{background:#f97316;color:white;cursor:pointer}
-.product,.profile{
-background:#1e293b;
-margin:15px auto;
-padding:15px;
-border-radius:15px;
-width:320px
-}
-img{max-width:100%;border-radius:10px;margin:5px 0}
-#cart{background:#0f172a;padding:10px;margin:10px}
+body{margin:0;font-family:Arial;background:#0f172a;color:white;text-align:center}
+header{background:#1e293b;padding:15px}
+button{padding:8px 12px;margin:5px;border:none;border-radius:8px;background:#f97316;color:white;cursor:pointer}
+input,textarea{padding:6px;margin:4px;border-radius:6px;border:none;width:80%;max-width:300px}
+.product{background:#1e293b;margin:15px auto;padding:15px;border-radius:15px;width:330px}
+img{max-width:100%;border-radius:10px}
+#addBtn{position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;font-size:26px}
+.review{background:#334155;margin:5px;padding:5px;border-radius:6px;font-size:14px}
 </style>
 </head>
 <body>
 
 <header>
-<h2>Marketplace Demo</h2>
 <input id="search" placeholder="Пошук..." oninput="loadProducts()">
 </header>
 
 <div id="auth"></div>
-<div id="app" style="display:none;">
-
-<h3>Профіль</h3>
-<input type="file" id="profilePic">
-<br>
-<textarea id="profileDesc" placeholder="Опис профілю"></textarea>
-<br>
-<button onclick="saveProfile()">Зберегти профіль</button>
-
-<div id="profile"></div>
-
-<hr>
-
-<h3>Додати товар</h3>
-<input id="name" placeholder="Назва">
-<textarea id="desc" placeholder="Опис товару"></textarea>
-<input id="price" type="number" placeholder="Ціна USD">
-<input type="file" id="images" multiple>
-<br>
-<button onclick="addProduct()">Додати</button>
-
+<div id="main" style="display:none;">
 <h3>Товари</h3>
 <div id="products"></div>
+</div>
 
-<hr>
+<button id="addBtn" style="display:none;" onclick="showForm()">+</button>
 
-<h3>🛒 Кошик</h3>
-<div id="cart"></div>
-<button onclick="checkout()">Оплатити через PayPal</button>
-
+<div id="form" style="display:none;">
+<h3>Додати товар</h3>
+<input id="name" placeholder="Назва"><br>
+<textarea id="desc" placeholder="Опис"></textarea><br>
+<input id="price" type="number" placeholder="Ціна USD"><br>
+<input id="paypal" placeholder="PayPal Email"><br>
+<input type="file" id="image"><br>
+<button onclick="addProduct()">Опублікувати</button>
+<button onclick="hideForm()">Закрити</button>
 </div>
 
 <script>
-let currentUser=localStorage.getItem("user");
+
+let user=localStorage.getItem("user");
 let cart=[];
 
 function showAuth(){
-if(!currentUser){
+if(!user){
 auth.innerHTML=`
-<input id="u" placeholder="Username">
-<input id="p" type="password" placeholder="Password">
-<button onclick="register()">Register</button>
-<button onclick="login()">Login</button>
+<h3>Реєстрація</h3>
+<input id="u" placeholder="Ім'я"><br>
+<input id="p" type="password" placeholder="Пароль"><br>
+<button onclick="register()">Зареєструватись</button>
+<button onclick="login()">Увійти</button>
 `;
 }else{
-auth.innerHTML=`Логін: <b>${currentUser}</b>
+auth.innerHTML=`Вітаємо, <b>${user}</b> 
 <button onclick="logout()">Вийти</button>`;
-app.style.display="block";
-loadProfile();
+main.style.display="block";
+addBtn.style.display="block";
 loadProducts();
 }
 }
@@ -102,96 +84,91 @@ localStorage.removeItem("user");
 location.reload();
 }
 
-function saveProfile(){
-let reader=new FileReader();
-reader.onload=function(){
-localStorage.setItem("profile_"+currentUser,JSON.stringify({
-pic:reader.result,
-desc:profileDesc.value
-}));
-loadProfile();
-};
-if(profilePic.files[0]) reader.readAsDataURL(profilePic.files[0]);
-}
-
-function loadProfile(){
-let data=JSON.parse(localStorage.getItem("profile_"+currentUser)||"null");
-if(!data) return;
-profile.innerHTML=`
-<div class="profile">
-<img src="${data.pic}">
-<p>${data.desc}</p>
-</div>`;
-}
+function showForm(){form.style.display="block";}
+function hideForm(){form.style.display="none";}
 
 function addProduct(){
-let readers=[];
-let files=images.files;
-for(let i=0;i<files.length;i++){
-readers.push(new Promise(resolve=>{
-let r=new FileReader();
-r.onload=()=>resolve(r.result);
-r.readAsDataURL(files[i]);
-}));
-}
-Promise.all(readers).then(imgs=>{
+let reader=new FileReader();
+reader.onload=function(){
 let products=JSON.parse(localStorage.getItem("products")||"[]");
 products.push({
 id:Date.now(),
-user:currentUser,
+user:user,
 name:name.value,
 desc:desc.value,
 price:price.value,
-images:imgs
+paypal:paypal.value,
+image:reader.result,
+reviews:[]
 });
 localStorage.setItem("products",JSON.stringify(products));
+hideForm();
 loadProducts();
-});
+};
+if(image.files[0]) reader.readAsDataURL(image.files[0]);
 }
 
 function addToCart(id){
 cart.push(id);
-updateCart();
+alert("Додано в кошик");
 }
 
-function updateCart(){
-cartDiv="";
+function addReview(id){
 let products=JSON.parse(localStorage.getItem("products")||"[]");
-let total=0;
-cart.forEach(id=>{
-let p=products.find(x=>x.id==id);
-if(p){
-total+=parseFloat(p.price);
-cartDiv+=p.name+" - $"+p.price+"<br>";
+let text=prompt("Ваш відгук:");
+let rating=prompt("Оцінка 1-5:");
+products.forEach(p=>{
+if(p.id==id){
+p.reviews.push({user:user,text:text,rating:rating});
 }
 });
-cartDiv+="<hr>Total: $"+total;
-cart.innerHTML=cartDiv;
+localStorage.setItem("products",JSON.stringify(products));
+loadProducts();
 }
 
 function loadProducts(){
 let products=JSON.parse(localStorage.getItem("products")||"[]");
 let s=search.value.toLowerCase();
 let html="";
+
 products.filter(p=>p.name.toLowerCase().includes(s)).forEach(p=>{
 html+=`
 <div class="product">
-<h4>${p.name}</h4>
+<h3>${p.name}</h3>
+<img src="${p.image}">
 <p>${p.desc}</p>
-<p>$${p.price}</p>
-${p.images.map(img=>`<img src="${img}">`).join("")}
+<p><b>$${p.price}</b></p>
+
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick
+&business=${p.paypal}
+&item_name=${encodeURIComponent(p.name)}
+&amount=${p.price}
+&currency_code=USD"
+target="_blank">
+<button>Купити через PayPal</button>
+</a>
+
 <button onclick="addToCart(${p.id})">В кошик</button>
+<button onclick="addReview(${p.id})">Відгук</button>
+
+<div>
+${p.reviews.map(r=>`
+<div class="review">
+⭐ ${r.rating}<br>
+${r.text}<br>
+— ${r.user}
+</div>`).join("")}
+</div>
+
 </div>
 `;
 });
+
 productsDiv.innerHTML=html;
 }
 
-function checkout(){
-alert("Тут буде інтеграція PayPal API");
-}
-
 showAuth();
+
 </script>
 
 </body>
