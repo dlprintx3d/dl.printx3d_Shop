@@ -1,128 +1,89 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Shop</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<title>3D Marketplace</title>
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
-}
-
-body {
-    background: linear-gradient(135deg, #1e1e2f, #2b5876);
-    color: white;
-}
-
-header {
-    text-align: center;
-    padding: 40px 20px;
-}
-
-header h1 {
-    font-size: 40px;
-}
-
-header p {
-    opacity: 0.8;
-}
-
-.products {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 40px;
-}
-
-.card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 20px;
-    text-align: center;
-    transition: 0.3s;
-}
-
-.card:hover {
-    transform: translateY(-10px);
-}
-
-.card img {
-    width: 100%;
-    border-radius: 15px;
-}
-
-.card h3 {
-    margin: 15px 0 10px;
-}
-
-.price {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 15px;
-}
-
-button {
-    background: #ff7b00;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 30px;
-    color: white;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-button:hover {
-    background: #ff9500;
-}
-
-footer {
-    text-align: center;
-    padding: 20px;
-    opacity: 0.7;
-}
+body{font-family:Arial;background:#1e1e2f;color:white;text-align:center;margin:0}
+header{padding:20px;background:#141423}
+input,button{padding:10px;margin:5px;border-radius:8px;border:none}
+button{background:#ff7b00;color:white;cursor:pointer}
+.product{background:#2b2b45;margin:15px;padding:15px;border-radius:15px}
 </style>
 </head>
-
 <body>
 
 <header>
-    <h1>🛍 Мій Онлайн Магазин</h1>
-    <p>Якісні товари за кращими цінами</p>
+<h1>3D Print Marketplace</h1>
+<div id="auth"></div>
 </header>
 
-<section class="products">
+<div id="app" style="display:none;">
+<h2>Додати товар</h2>
+<input id="productName" placeholder="Назва товару">
+<input id="productPrice" placeholder="Ціна">
+<button onclick="addProduct()">Додати</button>
 
-    <div class="card">
-        <img src="https://via.placeholder.com/300x200" alt="Товар 1">
-        <h3>Товар 1</h3>
-        <div class="price">500 грн</div>
-        <button>Купити</button>
-    </div>
+<h2>Товари</h2>
+<div id="products"></div>
+</div>
 
-    <div class="card">
-        <img src="https://via.placeholder.com/300x200" alt="Товар 2">
-        <h3>Товар 2</h3>
-        <div class="price">750 грн</div>
-        <button>Купити</button>
-    </div>
+<script>
+let currentUser = localStorage.getItem("user");
 
-    <div class="card">
-        <img src="https://via.placeholder.com/300x200" alt="Товар 3">
-        <h3>Товар 3</h3>
-        <div class="price">990 грн</div>
-        <button>Купити</button>
-    </div>
+function showAuth(){
+if(!currentUser){
+document.getElementById("auth").innerHTML=`
+<input id="username" placeholder="Username">
+<button onclick="register()">Login / Register</button>
+`;
+}else{
+document.getElementById("auth").innerHTML=`
+Ви увійшли як <b>${currentUser}</b>
+<button onclick="logout()">Вийти</button>
+`;
+document.getElementById("app").style.display="block";
+loadProducts();
+}
+}
 
-</section>
+function register(){
+let username=document.getElementById("username").value;
+localStorage.setItem("user",username);
+currentUser=username;
+showAuth();
+}
 
-<footer>
-    © 2026 Мій Магазин | Всі права захищені
-</footer>
+function logout(){
+localStorage.removeItem("user");
+location.reload();
+}
+
+function addProduct(){
+let name=document.getElementById("productName").value;
+let price=document.getElementById("productPrice").value;
+let products=JSON.parse(localStorage.getItem("products")||"[]");
+products.push({user:currentUser,name,price});
+localStorage.setItem("products",JSON.stringify(products));
+loadProducts();
+}
+
+function loadProducts(){
+let products=JSON.parse(localStorage.getItem("products")||"[]");
+let html="";
+products.forEach(p=>{
+html+=`<div class="product">
+<b>${p.name}</b><br>
+${p.price} USD<br>
+Продавець: ${p.user}
+</div>`;
+});
+document.getElementById("products").innerHTML=html;
+}
+
+showAuth();
+</script>
 
 </body>
 </html>
